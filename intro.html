@@ -1,0 +1,191 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><head><meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=0.8"/>
+    <title>Models of Program Evaluation Lab</title><link rel="stylesheet" type="text/css" href="scribble.css" title="default"/>
+    <link rel="stylesheet" type="text/css" href="manual-style.css" title="default"/>
+    <link rel="stylesheet" type="text/css" href="manual-racket.css" title="default"/>
+    <!--[if IE 6]><style type="text/css">.SIEHidden { overflow: hidden; }</style><![endif]-->
+</head>
+<body id="scribble-racket-lang-org">
+    <div class="tocset">
+        <div class="tocview">
+            <div class="tocviewlist tocviewlisttopspace">
+                <div class="tocviewtitle">
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="maincolumn"><div class="main"><div class="versionbox"><span class="versionNoNav">6.10</span></div><h2><a name="(part._.Lab)">
+    </a>Models of Program Evaluation Lab</h2>
+    <p>
+        Do <b>not</b> run the programs given in the handouts.
+        You can either fill out the handouts themselves
+        or type up your respsonses, print them out, and turn them in with the handouts.
+    </p>
+    <h3>1<tt>&nbsp;</tt>Recall Tracing</h3>
+    <p>Recall that <i>tracing</i> is the process of writing out the execution state of a program.
+    Earlier in the semester, we asked you to trace through several programs using the <i>substitution model</i>.</p>
+
+    <h3>2 Substitution Model Reminder</h3>
+    <p>
+        We provide a quick example of using the substitution model to evaluate <code>f(15)</code>
+        given the following definitions:
+    </p>
+<pre class="PyretHighlight"><p>fun f(x :: Number) -> Number:
+  if x > 10:
+    g(g(x))
+  else:
+    g(x)
+  end
+    - x
+end
+
+fun g(x :: Number) -> Number:
+  3 * x
+end</p></pre>
+<p>
+    We first start with <code>f(15)</code>.
+    We always evaluate the leftmost, innermost expression, copying the code around this expression.
+    We omit <code>cases</code> and <code>if</code> expression conditional evaluations
+    and proceed with the branch the code takes.
+    For function applications, we replace the function call with the body of the function
+    with the actual arguments <i>substituted in</i> for the formal parameters in the function body.
+    Thus, evaluation would proceed as follows:
+    <pre class="PyretHighlight"><p><mark>f(15)</mark>
+g(<mark>g(15)</mark>) - 15  # taking the true branch of the if
+g(<mark>3 * 15</mark>) - 15
+<mark>g(45)</mark> - 15
+<mark>(3 * 45)</mark> - 15
+<mark>135 - 15</mark>
+120</p></pre>
+</p>
+
+<h3>3 Environment and Store Example</h3>
+<p>
+    For some programs, tracking the state and change of memory is necessary to understand
+    the execution of that program.
+    So, we cover another example using the environment and store model!
+
+<pre class="PyretHighlight"><p>data Person:
+  | george-washington
+  | abraham-lincoln
+  | person(ref role-model :: Person)
+end
+
+var a = 10
+p = person(george-washington)
+d = person(person(abraham-lincoln))
+
+# Memory point 1
+
+a := 20
+
+# Memory point 2
+
+d!{role-model : p!role-model}
+
+# Memory point 3</p></pre>
+</p>
+<p>
+    In the following exercises, we will ask you to draw out the environment and store
+    at selected memory points, marked <code># Memory point x</code> in the source
+    of the code.
+    For example, this is what we would expect for <code>Memory point 1</code>:
+    <pre class="PyretHighlight"><p>Environment              Store
+a -> <b>!</b>10                 101 -> "george-washington"
+p -> 103                 102 -> "abraham-lincoln"
+d -> 107                 103 -> "person"
+                         104 -> @101
+                         105 -> "person"
+                         106 -> @102
+                         107 -> "person"
+                         108 -> @105</p></pre>
+
+    We mark <code>10</code> with an exclamation mark <code><b>!</b></code>
+since constants are weird and aren't really allocated in the store.
+We mark "values" that actually refer to memory addresses with <code>@</code>.
+Also, recall that memory is allocated similarly to how expressions are evaluated:
+we start leftmost, innermost and allocate out from there.
+Thus, <code>d</code>'s <code>role-model</code> is allocated in the store
+before <code>d</code> is.
+</p>
+<p>
+    For <code>Memory point 2</code>, we write just what has changed:
+    <pre class="PyretHighlight"><p>Environment              Store
+<mark>a -> <b>!</b>20</mark>                 101 -> "george-washington"
+...                      ...</p></pre>
+</p>
+<p>
+    For <code>Memory point 3</code>:
+    <pre class="PyretHighlight"><p>Environment              Store
+a -> <b>!</b>20                 101 -> "george-washington"
+p -> 103                 102 -> "abraham-lincoln"
+d -> 107                 103 -> "person"
+                         104 -> @101
+                         105 -> "person"
+                         106 -> @102
+                         107 -> "person"
+                         <mark>108 -> @101</mark></p></pre>
+</p>
+<!-- <p>
+    If there is a memory point inside of a function that is called more than once,
+    write out the <code>environment</code> and <code>store</code>
+    each time.
+</p> -->
+<h3>3 Function Application Interaction</h3>
+<p>
+
+When a function is called, the <code>environment</code>
+is extended with the name of the formal parameter bound
+to the value of the actual argument.
+We trace through the <code>environment</code> and <code>store</code> thoughout various points for the following code:
+<pre class="PyretHighlight"><p>data Box:
+  | box(ref value)
+end
+
+a = 5
+b = box(2)
+
+fun f(x :: Number, y :: Box) -> Number block:
+  # Memory point 2
+  y!{value : 3}
+  x + 2
+end
+
+# Memory point 1
+
+f(a, b)
+
+# Memory point 3</p></pre>
+<p>
+    For <code>Memory point 1</code>:
+    <pre class="PyretHighlight"><p>Environment              Store
+a -> <b>!</b>5                  101 -> "box"
+b -> 101                 102 -> <b>!</b>2</p></pre>
+</p>
+<p>
+    For <code>Memory point 2</code>:
+    <pre class="PyretHighlight"><p>Environment              Store
+a -> <b>!</b>5                  101 -> "box"
+b -> 101                 102 -> <b>!</b>2
+<mark>x -> <b>!</b>5</mark>
+<mark>y -> 101</mark></p></pre>
+Since we called <code>f</code>, the environment is temporarily extended.
+</p>
+<p>
+    For <code>Memory point 3</code>:
+    <pre class="PyretHighlight"><p>Environment              Store
+a -> <b>!</b>5                  101 -> "box"
+b -> 101                 <mark>102 -> <b>!</b>3</mark></p></pre>
+Now that we have left the scope of the function,
+the environment reverts to its previous state.
+In contrast, the store retains its state throughout entering and returning from functions.
+</p>
+<h3>4 After Completing the assignments</h3>
+<p>
+    Fill out this form: <a href="https://goo.gl/forms/3Ii8IZLMXpf3iHSn1">lab wrap-up</a>.
+</p>
+</div></div><div id="contextindicator">&nbsp;
+</div>
+</body>
+</html>
